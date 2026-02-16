@@ -6,7 +6,7 @@
   <title>Lobster Widget Prototype</title>
   <style>
     :root {
-      --panel-bg: rgba(0, 0, 0, 0.82);
+      --panel-bg: rgba(0, 0, 0, 0.7);
       --panel-border: rgba(255, 255, 255, 0.18);
       --text: #f8fafc;
       --muted: #94a3b8;
@@ -33,11 +33,16 @@
       padding: 12px;
     }
 
+    body.drag-over .widget {
+      outline: 2px dashed rgba(96, 165, 250, 0.9);
+      outline-offset: 3px;
+    }
+
     .widget {
       position: relative;
-      width: min(940px, 96vw);
-      min-height: 180px;
-      padding: 14px 16px 36px;
+      width: min(1240px, 98vw);
+      min-height: 260px;
+      padding: 16px 18px 40px;
       background: var(--panel-bg);
       border: 1px solid var(--panel-border);
       border-radius: 14px;
@@ -48,13 +53,14 @@
     .lobster-row {
       display: flex;
       align-items: flex-start;
-      gap: 14px;
-      padding-right: 86px;
-      min-height: 100px;
+      gap: 18px;
+      padding-right: 88px;
+      min-height: 190px;
+      flex-wrap: wrap;
     }
 
     .agent {
-      width: 84px;
+      width: 140px;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -62,16 +68,30 @@
       flex-shrink: 0;
     }
 
+    .agent-name {
+      margin-bottom: 6px;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      color: #cbd5e1;
+      text-shadow: 0 0 8px rgba(0, 0, 0, 0.8);
+      max-width: 100%;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
     .sprite {
-      width: 64px;
-      height: 64px;
+      width: 128px;
+      height: 128px;
       image-rendering: pixelated;
       object-fit: contain;
       filter: drop-shadow(0 0 10px rgba(0, 0, 0, 0.4));
+      cursor: help;
     }
 
     .timer {
-      margin-top: 4px;
+      margin-top: 5px;
       font-size: 12px;
       font-weight: 700;
       font-variant-numeric: tabular-nums;
@@ -90,6 +110,35 @@
       letter-spacing: 0.8px;
       text-shadow: 0 0 12px rgba(0, 0, 0, 0.6);
       user-select: none;
+    }
+
+    .fallback {
+      position: absolute;
+      top: 10px;
+      left: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      z-index: 2;
+    }
+
+    .fallback button {
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      background: rgba(15, 23, 42, 0.85);
+      color: var(--text);
+      border-radius: 6px;
+      padding: 4px 8px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+
+    .source-status {
+      font-size: 11px;
+      color: var(--muted);
+      max-width: 420px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .ticker {
@@ -122,7 +171,7 @@
     }
 
     .sleep-mode .lobster-row {
-      min-height: 72px;
+      min-height: 150px;
       align-items: center;
     }
 
@@ -162,6 +211,12 @@
 </head>
 <body style="background: transparent">
   <div class="widget" id="widget">
+    <div class="fallback">
+      <button id="loadJsonBtn" type="button">Load JSON (fallback)</button>
+      <input id="jsonFileInput" type="file" accept=".json,application/json" hidden />
+      <span id="sourceStatus" class="source-status">source: /agents</span>
+    </div>
+
     <div class="count" id="count">x0</div>
     <div class="lobster-row" id="lobsterRow"></div>
     <div class="ticker" id="ticker">
@@ -174,30 +229,62 @@
     const FRAME_COUNT = 4;
     const FRAME_MS = 250;
     const MAX_AGENTS = 8;
-
-    const MOCK_AGENTS = [
-      { char: "opus", task: "メイン待機", started: null, isMain: true },
-      { char: "sonnet", task: "メモ修正", started: Date.now() - 60_000 },
-      { char: "kusomegane", task: "絵文字調査", started: Date.now() - 120_000 },
-    ];
-
-    // デモ用: true にすると sleep-frame だけ表示。
-    const MOCK_SLEEP_MODE = false;
+    const AGENTS_POLL_MS = 1000;
+    const TODO_POLL_MS = 60_000;
+    const SLEEP_AFTER_MS = 10 * 60_000;
 
     const state = {
-      agents: [...MOCK_AGENTS],
-      sleepMode: MOCK_SLEEP_MODE,
+      agents: [],
+      sleepMode: false,
       frameIndex: 0,
       lastTickerText: "",
+      todoText: "",
+      sourceStatus: "source: /agents",
+      lastFetchError: "",
+      lastActiveAt: Date.now(),
     };
 
     const widget = document.getElementById("widget");
     const lobsterRow = document.getElementById("lobsterRow");
     const countEl = document.getElementById("count");
     const tickerEl = document.getElementById("tickerText");
+    const loadJsonBtn = document.getElementById("loadJsonBtn");
+    const jsonFileInput = document.getElementById("jsonFileInput");
+    const sourceStatusEl = document.getElementById("sourceStatus");
 
     function framePath(char, frameNumber) {
       return `${SPRITE_BASE}/${char}-frame${frameNumber}.png`;
+    }
+
+    function normalizeStarted(started) {
+      if (started === null || started === undefined || started === "") return null;
+      const n = Number(started);
+      if (!Number.isFinite(n) || n <= 0) return null;
+      return n > 1e12 ? n : n * 1000;
+    }
+
+    function normalizeAgents(payload) {
+      const rawAgents = Array.isArray(payload)
+        ? payload
+        : Array.isArray(payload?.agents)
+          ? payload.agents
+          : [];
+
+      return rawAgents
+        .map((agent) => {
+          if (!agent || typeof agent !== "object") return null;
+          const char = String(agent.char || "opus").trim() || "opus";
+          const task = typeof agent.task === "string" ? agent.task : "";
+          const started = normalizeStarted(agent.started);
+          return {
+            char,
+            task,
+            started,
+            isMain: Boolean(agent.isMain),
+          };
+        })
+        .filter(Boolean)
+        .slice(0, MAX_AGENTS);
     }
 
     function visibleAgents() {
@@ -225,14 +312,43 @@
 
     function currentTickerText() {
       if (state.sleepMode) return "💤 sleep mode";
+
       const active = state.agents
-        .filter((agent) => agent.started)
-        .sort((a, b) => b.started - a.started);
-      const focus = active[0] || state.agents[0];
-      return focus ? `▶ [${focus.char}] ${focus.task}` : "▶ [system] waiting...";
+        .filter((agent) => agent.task)
+        .sort((a, b) => (b.started || 0) - (a.started || 0));
+
+      if (active.length > 0) {
+        const focus = active[0];
+        return `▶ [${focus.char}] ${focus.task}`;
+      }
+
+      if (state.todoText) {
+        return `📌 ${state.todoText}`;
+      }
+
+      if (state.lastFetchError) {
+        return "⚠ /agents を取得できません（JSONをドラッグ&ドロップ可能）";
+      }
+
+      return "▶ [system] waiting...";
+    }
+
+    function updateSourceStatus(text) {
+      state.sourceStatus = text;
+      sourceStatusEl.textContent = text;
+    }
+
+    function refreshSleepMode() {
+      if (state.agents.length > 0) {
+        state.lastActiveAt = Date.now();
+        state.sleepMode = false;
+        return;
+      }
+      state.sleepMode = Date.now() - state.lastActiveAt >= SLEEP_AFTER_MS;
     }
 
     function render() {
+      refreshSleepMode();
       const agents = visibleAgents();
       widget.classList.toggle("sleep-mode", state.sleepMode);
 
@@ -244,16 +360,27 @@
         const agentEl = document.createElement("div");
         agentEl.className = "agent";
 
+        const nameEl = document.createElement("div");
+        nameEl.className = "agent-name";
+        nameEl.textContent = agent.char;
+
         const imgEl = document.createElement("img");
         imgEl.className = "sprite";
         imgEl.alt = agent.char;
         imgEl.src = framePath(agent.char, frameNumber);
+        imgEl.title = agent.task ? `${agent.char}: ${agent.task}` : `${agent.char}: (taskなし)`;
+        imgEl.addEventListener("error", () => {
+          if (imgEl.dataset.fallback === "1") return;
+          imgEl.dataset.fallback = "1";
+          imgEl.src = framePath("opus", frameNumber);
+        });
 
         const timerEl = document.createElement("div");
         timerEl.className = "timer";
         timerEl.style.animationDelay = `${idx * 0.2}s`;
         timerEl.textContent = formatElapsed(agent.started);
 
+        agentEl.appendChild(nameEl);
         agentEl.appendChild(imgEl);
         agentEl.appendChild(timerEl);
         lobsterRow.appendChild(agentEl);
@@ -278,16 +405,92 @@
       render();
     }
 
-    // デモ補助: Sキーでスリープ表示をON/OFF
-    window.addEventListener("keydown", (event) => {
-      if (event.key.toLowerCase() === "s") {
-        state.sleepMode = !state.sleepMode;
+    async function pollAgents() {
+      try {
+        const response = await fetch("/agents", { cache: "no-store" });
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        const payload = await response.json();
+        state.agents = normalizeAgents(payload);
+        state.lastFetchError = "";
+        if (state.agents.length > 0) {
+          state.lastActiveAt = Date.now();
+        }
+        updateSourceStatus("source: live /agents");
+        render();
+      } catch (error) {
+        state.lastFetchError = error?.message || "fetch failed";
+        updateSourceStatus(`source: fallback (${state.lastFetchError})`);
         render();
       }
+    }
+
+    async function pollTodo() {
+      try {
+        const response = await fetch("/todo", { cache: "no-store" });
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}`);
+        }
+        const payload = await response.json();
+        if (typeof payload?.todo === "string") {
+          state.todoText = payload.todo.trim();
+        } else if (typeof payload === "string") {
+          state.todoText = payload.trim();
+        }
+        render();
+      } catch {
+        // todo は補助情報なので失敗時は静かに無視
+      }
+    }
+
+    async function loadAgentsFromFile(file) {
+      if (!file) return;
+      try {
+        const text = await file.text();
+        const payload = JSON.parse(text);
+        const parsed = normalizeAgents(payload);
+        state.agents = parsed;
+        if (parsed.length > 0) {
+          state.lastActiveAt = Date.now();
+        }
+        state.lastFetchError = "";
+        updateSourceStatus(`source: local file (${file.name})`);
+        render();
+      } catch (error) {
+        updateSourceStatus(`source: local file error (${error?.message || "invalid json"})`);
+      }
+    }
+
+    loadJsonBtn.addEventListener("click", () => jsonFileInput.click());
+    jsonFileInput.addEventListener("change", (event) => {
+      const file = event.target.files?.[0];
+      loadAgentsFromFile(file);
+      event.target.value = "";
+    });
+
+    document.addEventListener("dragover", (event) => {
+      event.preventDefault();
+      document.body.classList.add("drag-over");
+    });
+
+    document.addEventListener("dragleave", () => {
+      document.body.classList.remove("drag-over");
+    });
+
+    document.addEventListener("drop", (event) => {
+      event.preventDefault();
+      document.body.classList.remove("drag-over");
+      const file = event.dataTransfer?.files?.[0];
+      loadAgentsFromFile(file);
     });
 
     render();
+    pollAgents();
+    pollTodo();
     setInterval(tickFrame, FRAME_MS);
+    setInterval(pollAgents, AGENTS_POLL_MS);
+    setInterval(pollTodo, TODO_POLL_MS);
   </script>
 </body>
 </html>
