@@ -147,7 +147,7 @@
       font-weight: 700;
       letter-spacing: 0.3px;
       color: #cbd5e1;
-      text-shadow: 0 0 8px rgba(0, 0, 0, 0.8);
+      text-shadow: 0 0 4px rgba(0, 0, 0, 0.8), 0 0 2px rgba(0, 0, 0, 0.9);
       max-width: 100%;
       white-space: nowrap;
       overflow: hidden;
@@ -212,7 +212,7 @@
       font-variant-numeric: tabular-nums;
       letter-spacing: 0.35px;
       animation: rainbow 3s linear infinite;
-      text-shadow: 0 0 8px rgba(255, 255, 255, 0.2);
+      text-shadow: 0 0 4px rgba(0, 0, 0, 0.8), 0 0 2px rgba(0, 0, 0, 0.9);
       min-height: 16px;
     }
 
@@ -276,6 +276,11 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      display: none;
+    }
+
+    body.debug-mode .source-status {
+      display: inline-block;
     }
 
     .debug-panel {
@@ -714,9 +719,9 @@
     <div class="menu-group">
       <p class="menu-group-title">📏 サイズ</p>
       <div class="size-options">
-        <button class="size-option" data-action="size" data-size="small">小</button>
-        <button class="size-option" data-action="size" data-size="medium">中</button>
-        <button class="size-option" data-action="size" data-size="large">大</button>
+        <button class="size-option" data-action="size" data-size="small">🐣 小</button>
+        <button class="size-option" data-action="size" data-size="medium">🦞 中</button>
+        <button class="size-option" data-action="size" data-size="large">🦞🦞 大</button>
       </div>
     </div>
 
