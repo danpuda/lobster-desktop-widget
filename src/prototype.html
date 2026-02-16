@@ -1291,7 +1291,10 @@
       render();
     }
 
+    let _agentsPollInFlight = false;
     async function pollAgents() {
+      if (_agentsPollInFlight) return; // in-flight guard: skip if previous fetch still running
+      _agentsPollInFlight = true;
       markPoll("agents", "polling");
       try {
         const response = await fetch("/agents", { cache: "no-store" });
@@ -1312,6 +1315,8 @@
         updateSourceStatus(`source: fallback (${state.lastFetchError})`);
         markPoll("agents", "error", state.lastFetchError);
         render();
+      } finally {
+        _agentsPollInFlight = false;
       }
     }
 
@@ -1593,6 +1598,21 @@
       saveSettings();
     });
 
+    // Adaptive polling: slower when sleeping (5s), normal when active (1s)
+    let _agentsPollTimer = null;
+    let _currentPollMs = AGENTS_POLL_MS;
+    function scheduleAgentsPoll() {
+      const targetMs = state.sleepMode ? 5000 : AGENTS_POLL_MS;
+      if (_agentsPollTimer && _currentPollMs === targetMs) return;
+      if (_agentsPollTimer) clearInterval(_agentsPollTimer);
+      _currentPollMs = targetMs;
+      _agentsPollTimer = setInterval(pollAgents, targetMs);
+    }
+
+    // Hook refreshSleepMode to also adjust poll rate
+    const _origRefreshSleep = refreshSleepMode;
+    refreshSleepMode = function() { _origRefreshSleep(); scheduleAgentsPoll(); };
+
     initializeSettings();
     document.body.classList.toggle("debug-mode", state.debugVisible);
     updateContextMenuState();
@@ -1600,7 +1620,7 @@
     pollAgents();
     pollTodo();
     setInterval(tickFrame, FRAME_MS);
-    setInterval(pollAgents, AGENTS_POLL_MS);
+    scheduleAgentsPoll();
     setInterval(pollTodo, TODO_POLL_MS);
   </script>
 </body>
