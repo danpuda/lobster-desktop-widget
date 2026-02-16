@@ -1,0 +1,27 @@
+{
+  "name": "lobster-desktop-widget",
+  "version": "1.0.0",
+  "description": "デスクトップ常駐型のサブエージェント監視ウィジェット。 Pixoo-64電光掲示板のデスクトップ版 — 最大8匹のロブスターが同時に活動状況を表示。",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/danpuda/lobster-desktop-widget.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/danpuda/lobster-desktop-widget/issues"
+  },
+  "homepage": "https://github.com/danpuda/lobster-desktop-widget#readme",
+  "dependencies": {
+    "@tauri-apps/api": "^2.10.1",
+    "@tauri-apps/cli": "^2.10.0"
+  }
+}
