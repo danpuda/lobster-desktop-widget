@@ -1,0 +1,293 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Lobster Widget Prototype</title>
+  <style>
+    :root {
+      --panel-bg: rgba(0, 0, 0, 0.82);
+      --panel-border: rgba(255, 255, 255, 0.18);
+      --text: #f8fafc;
+      --muted: #94a3b8;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      background: transparent;
+      color: var(--text);
+      font-family: "Segoe UI", "Noto Sans JP", sans-serif;
+    }
+
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 12px;
+    }
+
+    .widget {
+      position: relative;
+      width: min(940px, 96vw);
+      min-height: 180px;
+      padding: 14px 16px 36px;
+      background: var(--panel-bg);
+      border: 1px solid var(--panel-border);
+      border-radius: 14px;
+      overflow: hidden;
+      backdrop-filter: blur(2px);
+    }
+
+    .lobster-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      padding-right: 86px;
+      min-height: 100px;
+    }
+
+    .agent {
+      width: 84px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      flex-shrink: 0;
+    }
+
+    .sprite {
+      width: 64px;
+      height: 64px;
+      image-rendering: pixelated;
+      object-fit: contain;
+      filter: drop-shadow(0 0 10px rgba(0, 0, 0, 0.4));
+    }
+
+    .timer {
+      margin-top: 4px;
+      font-size: 12px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 0.35px;
+      animation: rainbow 3s linear infinite;
+      text-shadow: 0 0 8px rgba(255, 255, 255, 0.2);
+      min-height: 16px;
+    }
+
+    .count {
+      position: absolute;
+      top: 8px;
+      right: 16px;
+      font-size: 28px;
+      font-weight: 900;
+      letter-spacing: 0.8px;
+      text-shadow: 0 0 12px rgba(0, 0, 0, 0.6);
+      user-select: none;
+    }
+
+    .ticker {
+      position: absolute;
+      left: 0;
+      right: 0;
+      bottom: 4px;
+      height: 24px;
+      overflow: hidden;
+      border-top: 1px solid rgba(255, 255, 255, 0.12);
+      background: rgba(0, 0, 0, 0.28);
+    }
+
+    .ticker-track {
+      display: inline-block;
+      padding-left: 100%;
+      white-space: nowrap;
+      line-height: 24px;
+      font-size: 13px;
+      font-weight: 600;
+      color: #e2e8f0;
+      animation: marquee 12s linear infinite;
+      will-change: transform;
+    }
+
+    .sleep-mode .count,
+    .sleep-mode .ticker,
+    .sleep-mode .timer {
+      display: none;
+    }
+
+    .sleep-mode .lobster-row {
+      min-height: 72px;
+      align-items: center;
+    }
+
+    @keyframes rainbow {
+      0% {
+        color: #ff4d4d;
+      }
+      16% {
+        color: #ffa500;
+      }
+      33% {
+        color: #ffe84d;
+      }
+      50% {
+        color: #4dff88;
+      }
+      66% {
+        color: #5ac8ff;
+      }
+      83% {
+        color: #b082ff;
+      }
+      100% {
+        color: #ff4dca;
+      }
+    }
+
+    @keyframes marquee {
+      0% {
+        transform: translateX(0);
+      }
+      100% {
+        transform: translateX(-100%);
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="widget" id="widget">
+    <div class="count" id="count">x0</div>
+    <div class="lobster-row" id="lobsterRow"></div>
+    <div class="ticker" id="ticker">
+      <div class="ticker-track" id="tickerText">▶ [system] waiting...</div>
+    </div>
+  </div>
+
+  <script>
+    const SPRITE_BASE = "../assets/sprites";
+    const FRAME_COUNT = 4;
+    const FRAME_MS = 250;
+    const MAX_AGENTS = 8;
+
+    const MOCK_AGENTS = [
+      { char: "opus", task: "メイン待機", started: null, isMain: true },
+      { char: "sonnet", task: "メモ修正", started: Date.now() - 60_000 },
+      { char: "kusomegane", task: "絵文字調査", started: Date.now() - 120_000 },
+    ];
+
+    // デモ用: true にすると sleep-frame だけ表示。
+    const MOCK_SLEEP_MODE = false;
+
+    const state = {
+      agents: [...MOCK_AGENTS],
+      sleepMode: MOCK_SLEEP_MODE,
+      frameIndex: 0,
+      lastTickerText: "",
+    };
+
+    const widget = document.getElementById("widget");
+    const lobsterRow = document.getElementById("lobsterRow");
+    const countEl = document.getElementById("count");
+    const tickerEl = document.getElementById("tickerText");
+
+    function framePath(char, frameNumber) {
+      return `${SPRITE_BASE}/${char}-frame${frameNumber}.png`;
+    }
+
+    function visibleAgents() {
+      if (state.sleepMode) {
+        return [{ char: "sleep", task: "スリープ中", started: null, isMain: true }];
+      }
+      return state.agents.slice(0, MAX_AGENTS);
+    }
+
+    function formatElapsed(startedAt) {
+      if (!startedAt) return "---";
+      const sec = Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
+      const mm = String(Math.floor(sec / 60)).padStart(2, "0");
+      const ss = String(sec % 60).padStart(2, "0");
+      return `${mm}:${ss}`;
+    }
+
+    function countColor(count) {
+      if (count <= 0) return "#94a3b8";
+      const clamped = Math.min(7, Math.max(1, count));
+      const t = (clamped - 1) / 6;
+      const hue = 120 * (1 - t); // 120: green -> 0: red
+      return `hsl(${hue} 95% 55%)`;
+    }
+
+    function currentTickerText() {
+      if (state.sleepMode) return "💤 sleep mode";
+      const active = state.agents
+        .filter((agent) => agent.started)
+        .sort((a, b) => b.started - a.started);
+      const focus = active[0] || state.agents[0];
+      return focus ? `▶ [${focus.char}] ${focus.task}` : "▶ [system] waiting...";
+    }
+
+    function render() {
+      const agents = visibleAgents();
+      widget.classList.toggle("sleep-mode", state.sleepMode);
+
+      lobsterRow.innerHTML = "";
+
+      agents.forEach((agent, idx) => {
+        const frameNumber = ((state.frameIndex + idx) % FRAME_COUNT) + 1;
+
+        const agentEl = document.createElement("div");
+        agentEl.className = "agent";
+
+        const imgEl = document.createElement("img");
+        imgEl.className = "sprite";
+        imgEl.alt = agent.char;
+        imgEl.src = framePath(agent.char, frameNumber);
+
+        const timerEl = document.createElement("div");
+        timerEl.className = "timer";
+        timerEl.style.animationDelay = `${idx * 0.2}s`;
+        timerEl.textContent = formatElapsed(agent.started);
+
+        agentEl.appendChild(imgEl);
+        agentEl.appendChild(timerEl);
+        lobsterRow.appendChild(agentEl);
+      });
+
+      const count = state.sleepMode ? 0 : agents.length;
+      countEl.textContent = `x${count}`;
+      countEl.style.color = countColor(count);
+
+      const tickerText = currentTickerText();
+      if (tickerText !== state.lastTickerText) {
+        tickerEl.textContent = tickerText;
+        tickerEl.style.animation = "none";
+        void tickerEl.offsetWidth;
+        tickerEl.style.animation = "marquee 12s linear infinite";
+        state.lastTickerText = tickerText;
+      }
+    }
+
+    function tickFrame() {
+      state.frameIndex = (state.frameIndex + 1) % FRAME_COUNT;
+      render();
+    }
+
+    // デモ補助: Sキーでスリープ表示をON/OFF
+    window.addEventListener("keydown", (event) => {
+      if (event.key.toLowerCase() === "s") {
+        state.sleepMode = !state.sleepMode;
+        render();
+      }
+    });
+
+    render();
+    setInterval(tickFrame, FRAME_MS);
+  </script>
+</body>
+</html>
