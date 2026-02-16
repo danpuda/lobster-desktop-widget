@@ -12,12 +12,13 @@
     "windows": [
       {
         "title": "🦞 Lobster Widget",
-        "width": 600,
-        "height": 200,
+        "width": 800,
+        "height": 300,
         "decorations": false,
         "transparent": true,
         "alwaysOnTop": true,
-        "resizable": true
+        "resizable": true,
+        "skipTaskbar": true
       }
     ],
     "security": {
