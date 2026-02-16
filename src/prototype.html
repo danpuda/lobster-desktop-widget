@@ -33,6 +33,7 @@
       align-items: center;
       justify-content: center;
       padding: 12px;
+      overflow: hidden;
     }
 
     body.drag-over .widget {
@@ -50,7 +51,16 @@
       border-radius: 14px;
       overflow: hidden;
       backdrop-filter: blur(2px);
-      transition: opacity 0.35s ease, transform 0.35s ease;
+      transition: opacity 0.35s ease, transform 0.35s ease, box-shadow 0.2s ease;
+    }
+
+    .widget.dragging {
+      cursor: grabbing;
+      user-select: none;
+    }
+
+    .widget.always-on-top {
+      box-shadow: 0 0 0 1px rgba(250, 204, 21, 0.75), 0 0 20px rgba(250, 204, 21, 0.25);
     }
 
     .widget.widget-hidden {
@@ -110,6 +120,7 @@
     }
 
     .agent {
+      position: relative;
       width: var(--agent-width);
       display: flex;
       flex-direction: column;
@@ -151,6 +162,43 @@
       filter: drop-shadow(0 0 10px rgba(0, 0, 0, 0.4));
       cursor: help;
       transform-origin: 50% 78%;
+    }
+
+    .agent-tooltip {
+      position: absolute;
+      left: 50%;
+      bottom: calc(100% - 18px);
+      transform: translate(-50%, 8px);
+      min-width: 200px;
+      max-width: 260px;
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.24);
+      background: rgba(2, 6, 23, 0.94);
+      color: #e2e8f0;
+      font-size: 12px;
+      line-height: 1.35;
+      white-space: nowrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.18s ease, transform 0.18s ease;
+      z-index: 5;
+    }
+
+    .tooltip-title {
+      font-weight: 800;
+      margin-bottom: 3px;
+    }
+
+    .tooltip-line {
+      color: #cbd5e1;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .agent:hover .agent-tooltip,
+    .agent:focus-within .agent-tooltip {
+      opacity: 1;
+      transform: translate(-50%, 0);
     }
 
     .sleep-mode .agent .sprite {
@@ -239,7 +287,7 @@
       opacity: 0;
       pointer-events: none;
       transition: opacity 0.2s ease;
-      z-index: 3;
+      z-index: 4;
     }
 
     .debug-panel.show {
@@ -275,6 +323,80 @@
       opacity: 0;
     }
 
+    .context-menu {
+      position: fixed;
+      min-width: 216px;
+      padding: 6px;
+      border-radius: 10px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: rgba(2, 6, 23, 0.95);
+      box-shadow: 0 10px 28px rgba(0, 0, 0, 0.4);
+      z-index: 20;
+      opacity: 0;
+      transform: translateY(6px);
+      pointer-events: none;
+      transition: opacity 0.14s ease, transform 0.14s ease;
+    }
+
+    .context-menu.show {
+      opacity: 1;
+      transform: translateY(0);
+      pointer-events: auto;
+    }
+
+    .context-item {
+      display: block;
+      width: 100%;
+      text-align: left;
+      border: 0;
+      background: transparent;
+      color: #e2e8f0;
+      border-radius: 7px;
+      padding: 7px 10px;
+      font-size: 13px;
+      cursor: pointer;
+    }
+
+    .context-item:hover {
+      background: rgba(148, 163, 184, 0.2);
+    }
+
+    .menu-group {
+      margin: 4px 0;
+      padding: 4px 6px 6px;
+      border-radius: 8px;
+      background: rgba(15, 23, 42, 0.6);
+    }
+
+    .menu-group-title {
+      margin: 0 0 6px;
+      font-size: 12px;
+      color: #cbd5e1;
+    }
+
+    .size-options {
+      display: flex;
+      gap: 6px;
+    }
+
+    .size-option {
+      flex: 1;
+      border: 1px solid rgba(148, 163, 184, 0.35);
+      border-radius: 6px;
+      background: rgba(30, 41, 59, 0.8);
+      color: #e2e8f0;
+      font-size: 12px;
+      padding: 5px 0;
+      cursor: pointer;
+    }
+
+    .size-option.active {
+      border-color: rgba(250, 204, 21, 0.95);
+      background: rgba(234, 179, 8, 0.22);
+      color: #fde68a;
+      font-weight: 700;
+    }
+
     .sleep-mode .count,
     .sleep-mode .ticker,
     .sleep-mode .timer {
@@ -287,11 +409,6 @@
     }
 
     @media (max-width: 860px) {
-      :root {
-        --sprite-size: 64px;
-        --agent-width: 88px;
-      }
-
       .widget {
         min-height: 190px;
         padding: 14px 12px 36px;
@@ -453,6 +570,24 @@
     </div>
   </div>
 
+  <div class="context-menu" id="contextMenu" hidden>
+    <button class="context-item" data-action="refresh">🔄 リフレッシュ</button>
+    <button class="context-item" data-action="sleep">💤 スリープ切替</button>
+
+    <div class="menu-group">
+      <p class="menu-group-title">📏 サイズ</p>
+      <div class="size-options">
+        <button class="size-option" data-action="size" data-size="small">小</button>
+        <button class="size-option" data-action="size" data-size="medium">中</button>
+        <button class="size-option" data-action="size" data-size="large">大</button>
+      </div>
+    </div>
+
+    <button class="context-item" id="alwaysOnTopItem" data-action="alwaysOnTop">📌 最前面: OFF</button>
+    <button class="context-item" data-action="debug">ℹ️ デバッグ情報</button>
+    <button class="context-item" data-action="close">❌ 閉じる</button>
+  </div>
+
   <script>
     const SPRITE_BASE = "../assets/sprites";
     const FRAME_COUNT = 4;
@@ -461,10 +596,17 @@
     const AGENTS_POLL_MS = 1000;
     const TODO_POLL_MS = 60_000;
     const SLEEP_AFTER_MS = 10 * 60_000;
+    const SETTINGS_KEY = "lobster-widget-settings-v1";
+
+    const SIZE_PRESETS = {
+      small: { sprite: 64, width: 88 },
+      medium: { sprite: 128, width: 140 },
+      large: { sprite: 192, width: 210 },
+    };
 
     const CHAR_ICONS = {
       opus: "🦞",
-      sonnet: "🔵",
+      sonnet: "🟠",
       haiku: "🟢",
       gemini: "🟡",
       kusomegane: "🟣",
@@ -487,6 +629,20 @@
       lastRenderedCount: null,
       debugVisible: false,
       widgetHidden: false,
+      widgetSize: "medium",
+      alwaysOnTop: false,
+      widgetPosition: null,
+      contextMenuOpen: false,
+      lastUpdateAt: null,
+      errorCount: 0,
+      drag: {
+        active: false,
+        pointerId: null,
+        offsetX: 0,
+        offsetY: 0,
+        width: 0,
+        height: 0,
+      },
       agentNodes: new Map(),
       pollStatus: {
         agents: { state: "idle", lastAt: null, error: "" },
@@ -503,6 +659,14 @@
     const jsonFileInput = document.getElementById("jsonFileInput");
     const sourceStatusEl = document.getElementById("sourceStatus");
     const debugPanelEl = document.getElementById("debugPanel");
+    const contextMenuEl = document.getElementById("contextMenu");
+    const alwaysOnTopItemEl = document.getElementById("alwaysOnTopItem");
+    const sizeOptionEls = Array.from(contextMenuEl.querySelectorAll(".size-option"));
+
+    function clamp(value, min, max) {
+      if (max < min) return min;
+      return Math.min(max, Math.max(min, value));
+    }
 
     function framePath(char, frameNumber) {
       return `${SPRITE_BASE}/${char}-frame${frameNumber}.png`;
@@ -543,6 +707,90 @@
         .slice(0, MAX_AGENTS);
     }
 
+    function loadSettings() {
+      try {
+        const raw = localStorage.getItem(SETTINGS_KEY);
+        if (!raw) return null;
+        return JSON.parse(raw);
+      } catch {
+        return null;
+      }
+    }
+
+    function currentWidgetPosition() {
+      const top = Number.parseFloat(widget.style.top);
+      const left = Number.parseFloat(widget.style.left);
+      if (!Number.isFinite(top) || !Number.isFinite(left)) {
+        return state.widgetPosition;
+      }
+      return { top: Math.round(top), left: Math.round(left) };
+    }
+
+    function saveSettings() {
+      try {
+        const payload = {
+          size: state.widgetSize,
+          alwaysOnTop: state.alwaysOnTop,
+          position: currentWidgetPosition(),
+        };
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify(payload));
+      } catch {
+        // ignore storage errors
+      }
+    }
+
+    function applyWidgetSize(size, { persist = true } = {}) {
+      if (!SIZE_PRESETS[size]) return;
+      state.widgetSize = size;
+      const preset = SIZE_PRESETS[size];
+      document.documentElement.style.setProperty("--sprite-size", `${preset.sprite}px`);
+      document.documentElement.style.setProperty("--agent-width", `${preset.width}px`);
+      updateContextMenuState();
+      if (persist) {
+        saveSettings();
+      }
+    }
+
+    function applyAlwaysOnTop(enabled, { persist = true } = {}) {
+      state.alwaysOnTop = Boolean(enabled);
+      widget.classList.toggle("always-on-top", state.alwaysOnTop);
+      updateContextMenuState();
+      if (persist) {
+        saveSettings();
+      }
+    }
+
+    function applyWidgetPosition(position, { persist = true } = {}) {
+      if (!position) return;
+      const top = Number(position.top);
+      const left = Number(position.left);
+      if (!Number.isFinite(top) || !Number.isFinite(left)) return;
+
+      widget.style.position = "fixed";
+      widget.style.top = `${Math.round(top)}px`;
+      widget.style.left = `${Math.round(left)}px`;
+      state.widgetPosition = { top: Math.round(top), left: Math.round(left) };
+
+      if (persist) {
+        saveSettings();
+      }
+    }
+
+    function initializeSettings() {
+      const saved = loadSettings();
+      if (!saved || typeof saved !== "object") {
+        applyWidgetSize("medium", { persist: false });
+        applyAlwaysOnTop(false, { persist: false });
+        return;
+      }
+
+      applyWidgetSize(saved.size in SIZE_PRESETS ? saved.size : "medium", { persist: false });
+      applyAlwaysOnTop(Boolean(saved.alwaysOnTop), { persist: false });
+      if (saved.position && typeof saved.position === "object") {
+        applyWidgetPosition(saved.position, { persist: false });
+      }
+    }
+
     function visibleAgents() {
       if (state.sleepMode) {
         return [{ char: "sleep", task: "スリープ中", started: null, isMain: true }];
@@ -551,18 +799,29 @@
     }
 
     function formatElapsed(startedAt) {
-      if (!startedAt) return "---";
+      if (!startedAt) return "--:--";
       const sec = Math.max(0, Math.floor((Date.now() - startedAt) / 1000));
       const mm = String(Math.floor(sec / 60)).padStart(2, "0");
       const ss = String(sec % 60).padStart(2, "0");
       return `${mm}:${ss}`;
     }
 
+    function formatStarted(startedAt) {
+      if (!startedAt) return "--:-- JST";
+      const value = new Date(startedAt).toLocaleTimeString("ja-JP", {
+        hour: "2-digit",
+        minute: "2-digit",
+        hour12: false,
+        timeZone: "Asia/Tokyo",
+      });
+      return `${value} JST`;
+    }
+
     function countColor(count) {
       if (count <= 0) return "#94a3b8";
       const clamped = Math.min(7, Math.max(1, count));
       const t = (clamped - 1) / 6;
-      const hue = 120 * (1 - t); // 120: green -> 0: red
+      const hue = 120 * (1 - t);
       return `hsl(${hue} 95% 55%)`;
     }
 
@@ -592,6 +851,7 @@
     function updateSourceStatus(text) {
       state.sourceStatus = text;
       sourceStatusEl.textContent = text;
+      updateDebugPanel();
     }
 
     function refreshSleepMode() {
@@ -633,9 +893,27 @@
       const timerEl = document.createElement("div");
       timerEl.className = "timer";
 
+      const tooltipEl = document.createElement("div");
+      tooltipEl.className = "agent-tooltip";
+
+      const tooltipTitleEl = document.createElement("div");
+      tooltipTitleEl.className = "tooltip-title";
+      const tooltipTaskEl = document.createElement("div");
+      tooltipTaskEl.className = "tooltip-line";
+      const tooltipTimeEl = document.createElement("div");
+      tooltipTimeEl.className = "tooltip-line";
+      const tooltipStartedEl = document.createElement("div");
+      tooltipStartedEl.className = "tooltip-line";
+
+      tooltipEl.appendChild(tooltipTitleEl);
+      tooltipEl.appendChild(tooltipTaskEl);
+      tooltipEl.appendChild(tooltipTimeEl);
+      tooltipEl.appendChild(tooltipStartedEl);
+
       agentEl.appendChild(nameEl);
       agentEl.appendChild(imgEl);
       agentEl.appendChild(timerEl);
+      agentEl.appendChild(tooltipEl);
 
       agentEl.addEventListener("animationend", () => {
         agentEl.classList.remove("entering");
@@ -646,6 +924,10 @@
         nameEl,
         imgEl,
         timerEl,
+        tooltipTitleEl,
+        tooltipTaskEl,
+        tooltipTimeEl,
+        tooltipStartedEl,
         char: agent.char,
         removing: false,
       };
@@ -668,10 +950,13 @@
         node.imgEl.src = nextSrc;
       }
 
-      node.imgEl.title = agent.task ? `${agent.char}: ${agent.task}` : `${agent.char}: (taskなし)`;
-
       node.timerEl.style.animationDelay = `${idx * 0.2}s`;
       node.timerEl.textContent = formatElapsed(agent.started);
+
+      node.tooltipTitleEl.textContent = `${iconForChar(agent.char)} ${agent.char}`;
+      node.tooltipTaskEl.textContent = `Task: ${agent.task || "(taskなし)"}`;
+      node.tooltipTimeEl.textContent = `Time: ${formatElapsed(agent.started)}`;
+      node.tooltipStartedEl.textContent = `Started: ${formatStarted(agent.started)}`;
     }
 
     function removeAgentNode(key, node) {
@@ -757,21 +1042,22 @@
 
     function formatPollTime(ts) {
       if (!ts) return "--:--:--";
-      return new Date(ts).toLocaleTimeString("ja-JP", { hour12: false });
+      return new Date(ts).toLocaleTimeString("ja-JP", { hour12: false, timeZone: "Asia/Tokyo" });
     }
 
     function updateDebugPanel() {
-      const agentsPoll = state.pollStatus.agents;
-      const todoPoll = state.pollStatus.todo;
+      const source = state.sourceStatus || "source: unknown";
+      const activeCount = state.sleepMode ? 0 : state.agents.length;
+      const sizePx = SIZE_PRESETS[state.widgetSize]?.sprite || 128;
 
       debugPanelEl.textContent = [
-        `agents: ${state.agents.length}/${MAX_AGENTS}`,
-        `sleep: ${state.sleepMode ? "ON" : "OFF"} (manual: ${state.manualSleep ? "ON" : "OFF"})`,
-        `widget: ${state.widgetHidden ? "hidden" : "visible"}`,
-        `/agents: ${agentsPoll.state} @ ${formatPollTime(agentsPoll.lastAt)}`,
-        `/todo: ${todoPoll.state} @ ${formatPollTime(todoPoll.lastAt)}`,
-        `source: ${state.sourceStatus}`,
-        `last error: ${state.lastFetchError || "none"}`,
+        source,
+        `agents: ${activeCount} active`,
+        `polling: ${AGENTS_POLL_MS / 1000}s (agents) / ${TODO_POLL_MS / 1000}s (todo)`,
+        `last update: ${formatPollTime(state.lastUpdateAt)}`,
+        `errors: ${state.errorCount}`,
+        `size: ${state.widgetSize} (${sizePx}px)`,
+        `always on top: ${state.alwaysOnTop ? "ON" : "OFF"}`,
       ].join("\n");
 
       debugPanelEl.classList.toggle("show", state.debugVisible);
@@ -783,6 +1069,10 @@
         lastAt: Date.now(),
         error,
       };
+      state.lastUpdateAt = Date.now();
+      if (status === "error") {
+        state.errorCount += 1;
+      }
       updateDebugPanel();
     }
 
@@ -863,8 +1153,10 @@
         }
         state.lastFetchError = "";
         updateSourceStatus(`source: local file (${file.name})`);
+        state.lastUpdateAt = Date.now();
         render();
       } catch (error) {
+        state.errorCount += 1;
         updateSourceStatus(`source: local file error (${error?.message || "invalid json"})`);
       }
     }
@@ -885,6 +1177,94 @@
     function toggleWidgetHidden() {
       state.widgetHidden = !state.widgetHidden;
       render();
+    }
+
+    function toggleAlwaysOnTop() {
+      applyAlwaysOnTop(!state.alwaysOnTop);
+      render();
+    }
+
+    function updateContextMenuState() {
+      alwaysOnTopItemEl.textContent = `📌 最前面: ${state.alwaysOnTop ? "ON" : "OFF"}`;
+      sizeOptionEls.forEach((el) => {
+        el.classList.toggle("active", el.dataset.size === state.widgetSize);
+      });
+    }
+
+    function openContextMenu(clientX, clientY) {
+      updateContextMenuState();
+      contextMenuEl.hidden = false;
+      contextMenuEl.classList.add("show");
+      state.contextMenuOpen = true;
+
+      const rect = contextMenuEl.getBoundingClientRect();
+      const pad = 8;
+      const left = clamp(clientX, pad, window.innerWidth - rect.width - pad);
+      const top = clamp(clientY, pad, window.innerHeight - rect.height - pad);
+      contextMenuEl.style.left = `${left}px`;
+      contextMenuEl.style.top = `${top}px`;
+    }
+
+    function closeContextMenu() {
+      if (!state.contextMenuOpen) return;
+      state.contextMenuOpen = false;
+      contextMenuEl.classList.remove("show");
+      contextMenuEl.hidden = true;
+    }
+
+    function shouldStartDrag(target) {
+      return !target.closest("button, input, .context-menu, .sprite, .agent-tooltip");
+    }
+
+    function handleDragStart(event) {
+      if (event.button !== 0) return;
+      if (!shouldStartDrag(event.target)) return;
+      if (state.widgetHidden) return;
+
+      const rect = widget.getBoundingClientRect();
+      if (getComputedStyle(widget).position !== "fixed") {
+        widget.style.position = "fixed";
+        widget.style.top = `${rect.top}px`;
+        widget.style.left = `${rect.left}px`;
+      }
+
+      state.drag.active = true;
+      state.drag.pointerId = event.pointerId;
+      state.drag.offsetX = event.clientX - rect.left;
+      state.drag.offsetY = event.clientY - rect.top;
+      state.drag.width = rect.width;
+      state.drag.height = rect.height;
+
+      widget.classList.add("dragging");
+      widget.setPointerCapture(event.pointerId);
+      event.preventDefault();
+    }
+
+    function handleDragMove(event) {
+      if (!state.drag.active || event.pointerId !== state.drag.pointerId) return;
+
+      const maxLeft = window.innerWidth - state.drag.width;
+      const maxTop = window.innerHeight - state.drag.height;
+      const left = clamp(event.clientX - state.drag.offsetX, 0, maxLeft);
+      const top = clamp(event.clientY - state.drag.offsetY, 0, maxTop);
+
+      widget.style.left = `${Math.round(left)}px`;
+      widget.style.top = `${Math.round(top)}px`;
+    }
+
+    function finishDrag(event) {
+      if (!state.drag.active || event.pointerId !== state.drag.pointerId) return;
+
+      state.drag.active = false;
+      widget.classList.remove("dragging");
+      try {
+        widget.releasePointerCapture(event.pointerId);
+      } catch {
+        // ignore
+      }
+
+      state.widgetPosition = currentWidgetPosition();
+      saveSettings();
     }
 
     loadJsonBtn.addEventListener("click", () => jsonFileInput.click());
@@ -910,6 +1290,73 @@
       loadAgentsFromFile(file);
     });
 
+    widget.addEventListener("contextmenu", (event) => {
+      event.preventDefault();
+      openContextMenu(event.clientX, event.clientY);
+    });
+
+    contextMenuEl.addEventListener("click", (event) => {
+      const actionEl = event.target.closest("[data-action]");
+      if (!actionEl) return;
+
+      const action = actionEl.dataset.action;
+
+      if (action === "refresh") {
+        pollAgents();
+        pollTodo();
+        render();
+        closeContextMenu();
+        return;
+      }
+
+      if (action === "sleep") {
+        toggleManualSleep();
+        closeContextMenu();
+        return;
+      }
+
+      if (action === "size") {
+        applyWidgetSize(actionEl.dataset.size);
+        render();
+        closeContextMenu();
+        return;
+      }
+
+      if (action === "alwaysOnTop") {
+        toggleAlwaysOnTop();
+        closeContextMenu();
+        return;
+      }
+
+      if (action === "debug") {
+        toggleDebug();
+        closeContextMenu();
+        return;
+      }
+
+      if (action === "close") {
+        toggleWidgetHidden();
+        closeContextMenu();
+      }
+    });
+
+    document.addEventListener("pointerdown", (event) => {
+      if (!state.contextMenuOpen) return;
+      if (contextMenuEl.contains(event.target)) return;
+      closeContextMenu();
+    });
+
+    window.addEventListener("resize", () => {
+      if (state.contextMenuOpen) {
+        closeContextMenu();
+      }
+    });
+
+    widget.addEventListener("pointerdown", handleDragStart);
+    widget.addEventListener("pointermove", handleDragMove);
+    widget.addEventListener("pointerup", finishDrag);
+    widget.addEventListener("pointercancel", finishDrag);
+
     document.addEventListener("keydown", (event) => {
       const tagName = event.target?.tagName;
       if (tagName === "INPUT" || tagName === "TEXTAREA") return;
@@ -928,10 +1375,21 @@
 
       if (event.key === "Escape") {
         event.preventDefault();
+        if (state.contextMenuOpen) {
+          closeContextMenu();
+          return;
+        }
         toggleWidgetHidden();
       }
     });
 
+    window.addEventListener("beforeunload", () => {
+      state.widgetPosition = currentWidgetPosition();
+      saveSettings();
+    });
+
+    initializeSettings();
+    updateContextMenuState();
     render();
     pollAgents();
     pollTodo();
