@@ -989,10 +989,18 @@
 
     function countColor(count) {
       if (count <= 0) return "#94a3b8";
-      const clamped = Math.min(7, Math.max(1, count));
-      const t = (clamped - 1) / 6;
-      const hue = 120 * (1 - t);
-      return `hsl(${hue} 95% 55%)`;
+      // Hand-tuned 7-stop palette: each count is visually distinct
+      const palette = {
+        1: "#00ff50",  // bright green
+        2: "#64ff00",  // lime
+        3: "#c8e600",  // yellow-green
+        4: "#ffc800",  // yellow-orange
+        5: "#ff7800",  // orange
+        6: "#ff3200",  // red-orange
+        7: "#ff0000",  // pure red
+      };
+      const c = Math.min(7, Math.max(1, count));
+      return palette[c] || "#ff0000";
     }
 
     function currentMessageText() {
