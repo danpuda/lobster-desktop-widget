@@ -1124,17 +1124,24 @@
 
       const spriteChar = node.imgEl.dataset.fallback === "1" ? "opus" : agent.char;
       const nextSrc = framePath(spriteChar, frameNumber);
-      if (node.imgEl.src !== nextSrc) {
+      // Compare using getAttribute (relative) not .src (absolute) to avoid always-true mismatch
+      if (node.imgEl.getAttribute("src") !== nextSrc) {
         node.imgEl.src = nextSrc;
       }
 
       node.timerEl.style.animationDelay = `${idx * 0.2}s`;
-      node.timerEl.textContent = formatElapsed(agent.started);
+      // Guard DOM updates: only write when value changed
+      const timerText = formatElapsed(agent.started);
+      if (node.timerEl.textContent !== timerText) node.timerEl.textContent = timerText;
 
-      node.tooltipTitleEl.textContent = `${iconForChar(agent.char)} ${agent.char}`;
-      node.tooltipTaskEl.textContent = `Task: ${agent.task || "(taskなし)"}`;
-      node.tooltipTimeEl.textContent = `Time: ${formatElapsed(agent.started)}`;
-      node.tooltipStartedEl.textContent = `Started: ${formatStarted(agent.started)}`;
+      const ttTitle = `${iconForChar(agent.char)} ${agent.char}`;
+      if (node.tooltipTitleEl.textContent !== ttTitle) node.tooltipTitleEl.textContent = ttTitle;
+      const ttTask = `Task: ${agent.task || "(taskなし)"}`;
+      if (node.tooltipTaskEl.textContent !== ttTask) node.tooltipTaskEl.textContent = ttTask;
+      const ttTime = `Time: ${timerText}`;
+      if (node.tooltipTimeEl.textContent !== ttTime) node.tooltipTimeEl.textContent = ttTime;
+      const ttStarted = `Started: ${formatStarted(agent.started)}`;
+      if (node.tooltipStartedEl.textContent !== ttStarted) node.tooltipStartedEl.textContent = ttStarted;
     }
 
     function removeAgentNode(key, node) {

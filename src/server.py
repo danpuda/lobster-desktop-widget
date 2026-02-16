@@ -73,11 +73,24 @@ def extract_top_priority(todo_markdown: str) -> str:
 
 
 class Handler(BaseHTTPRequestHandler):
+    # Paths that should NOT be cached (dynamic data)
+    _NO_CACHE_PATHS = frozenset({"/agents", "/todo"})
+
     def end_headers(self) -> None:
         self.send_header("Access-Control-Allow-Origin", "*")
         self.send_header("Access-Control-Allow-Methods", "GET, OPTIONS")
         self.send_header("Access-Control-Allow-Headers", "Content-Type")
-        self.send_header("Cache-Control", "no-store, no-cache, must-revalidate")
+
+        # Static assets get long cache; dynamic endpoints get no-store
+        req_path = urlparse(self.path).path
+        if req_path in self._NO_CACHE_PATHS:
+            self.send_header("Cache-Control", "no-store, no-cache, must-revalidate")
+        elif req_path.startswith("/assets/"):
+            # Sprites/images: cache for 1 hour (immutable content)
+            self.send_header("Cache-Control", "public, max-age=3600, immutable")
+        else:
+            # HTML/JS: cache briefly, revalidate
+            self.send_header("Cache-Control", "public, max-age=60")
         super().end_headers()
 
     def do_OPTIONS(self) -> None:  # noqa: N802
