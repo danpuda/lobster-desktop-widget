@@ -10,6 +10,8 @@
       --panel-border: rgba(255, 255, 255, 0.18);
       --text: #f8fafc;
       --muted: #94a3b8;
+      --sprite-size: 128px;
+      --agent-width: 140px;
     }
 
     * {
@@ -48,6 +50,54 @@
       border-radius: 14px;
       overflow: hidden;
       backdrop-filter: blur(2px);
+      transition: opacity 0.35s ease, transform 0.35s ease;
+    }
+
+    .widget.widget-hidden {
+      opacity: 0;
+      transform: scale(0.96) translateY(12px);
+      pointer-events: none;
+    }
+
+    .sleep-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      background: rgba(0, 0, 0, 0.72);
+      opacity: 0;
+      transition: opacity 10s linear;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .sleep-mode .sleep-overlay {
+      opacity: 1;
+    }
+
+    .zzz {
+      font-size: 32px;
+      font-weight: 900;
+      letter-spacing: 8px;
+      text-transform: uppercase;
+      color: rgba(255, 255, 255, 0.85);
+      text-shadow: 0 0 8px rgba(255, 255, 255, 0.2);
+      opacity: 0;
+      transform: translateY(18px) scale(0.9);
+    }
+
+    .sleep-mode .zzz {
+      animation: zzzFloat 2.7s ease-in-out infinite;
+    }
+
+    .fallback,
+    .count,
+    .lobster-row,
+    .ticker,
+    .debug-panel {
+      position: relative;
+      z-index: 2;
     }
 
     .lobster-row {
@@ -60,12 +110,24 @@
     }
 
     .agent {
-      width: 140px;
+      width: var(--agent-width);
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: flex-start;
       flex-shrink: 0;
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      transition: opacity 0.42s ease, transform 0.42s ease;
+    }
+
+    .agent.entering {
+      animation: lobsterEnter 0.62s cubic-bezier(0.2, 0.8, 0.2, 1);
+    }
+
+    .agent.leaving {
+      opacity: 0;
+      transform: translateY(14px) scale(0.88);
     }
 
     .agent-name {
@@ -82,12 +144,17 @@
     }
 
     .sprite {
-      width: 128px;
-      height: 128px;
+      width: var(--sprite-size);
+      height: var(--sprite-size);
       image-rendering: pixelated;
       object-fit: contain;
       filter: drop-shadow(0 0 10px rgba(0, 0, 0, 0.4));
       cursor: help;
+      transform-origin: 50% 78%;
+    }
+
+    .sleep-mode .agent .sprite {
+      animation: sleepSway 2.8s ease-in-out infinite;
     }
 
     .timer {
@@ -110,6 +177,20 @@
       letter-spacing: 0.8px;
       text-shadow: 0 0 12px rgba(0, 0, 0, 0.6);
       user-select: none;
+      color: #94a3b8;
+    }
+
+    .count-value {
+      display: inline-block;
+    }
+
+    .count-value.pop {
+      animation: countPop 0.34s ease;
+    }
+
+    .count.danger {
+      color: #ff4d4d !important;
+      animation: countBlink 0.8s steps(1) infinite;
     }
 
     .fallback {
@@ -119,7 +200,7 @@
       display: flex;
       align-items: center;
       gap: 8px;
-      z-index: 2;
+      z-index: 3;
     }
 
     .fallback button {
@@ -139,6 +220,30 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+    }
+
+    .debug-panel {
+      position: absolute;
+      top: 38px;
+      right: 14px;
+      min-width: 260px;
+      max-width: min(48vw, 420px);
+      padding: 8px 10px;
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      background: rgba(2, 6, 23, 0.84);
+      color: #93c5fd;
+      font-size: 11px;
+      line-height: 1.35;
+      white-space: pre-wrap;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      z-index: 3;
+    }
+
+    .debug-panel.show {
+      opacity: 1;
     }
 
     .ticker {
@@ -161,7 +266,13 @@
       font-weight: 600;
       color: #e2e8f0;
       animation: marquee 12s linear infinite;
+      opacity: 1;
+      transition: opacity 0.2s ease;
       will-change: transform;
+    }
+
+    .ticker-track.fade-out {
+      opacity: 0;
     }
 
     .sleep-mode .count,
@@ -173,6 +284,46 @@
     .sleep-mode .lobster-row {
       min-height: 150px;
       align-items: center;
+    }
+
+    @media (max-width: 860px) {
+      :root {
+        --sprite-size: 64px;
+        --agent-width: 88px;
+      }
+
+      .widget {
+        min-height: 190px;
+        padding: 14px 12px 36px;
+      }
+
+      .lobster-row {
+        gap: 10px;
+        padding-right: 50px;
+        min-height: 120px;
+      }
+
+      .agent-name {
+        font-size: 11px;
+      }
+
+      .count {
+        font-size: 22px;
+        right: 10px;
+      }
+
+      .fallback {
+        gap: 4px;
+      }
+
+      .fallback button {
+        font-size: 11px;
+        padding: 3px 6px;
+      }
+
+      .source-status {
+        max-width: 220px;
+      }
     }
 
     @keyframes rainbow {
@@ -208,87 +359,97 @@
       }
     }
 
-    /* Phase 5: Agent transitions */
-    .agent {
-      transition: opacity 0.3s ease, transform 0.3s ease;
-    }
-    .agent.entering {
-      opacity: 0;
-      transform: scale(0.5);
-    }
-    .agent.active {
-      opacity: 1;
-      transform: scale(1);
+    @keyframes lobsterEnter {
+      0% {
+        opacity: 0;
+        transform: translateY(22px) scale(0.72);
+      }
+      58% {
+        opacity: 1;
+        transform: translateY(-10px) scale(1.1);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
     }
 
-    /* Phase 5: Sleep animations */
-    .sleep-mode .widget {
-      background: rgba(0, 0, 0, 0.9);
-      transition: background 1.5s ease;
-    }
-    .sleep-zzz {
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      font-size: 48px;
-      opacity: 0.6;
-      animation: float-zzz 3s ease-in-out infinite;
-      pointer-events: none;
-      z-index: 10;
-    }
-    @keyframes float-zzz {
-      0%, 100% {
-        transform: translate(-50%, -50%) translateY(0);
-        opacity: 0.4;
+    @keyframes sleepSway {
+      0% {
+        transform: rotate(0deg);
+      }
+      25% {
+        transform: rotate(-3deg);
       }
       50% {
-        transform: translate(-50%, -50%) translateY(-20px);
-        opacity: 0.8;
+        transform: rotate(0deg);
+      }
+      75% {
+        transform: rotate(3deg);
+      }
+      100% {
+        transform: rotate(0deg);
       }
     }
 
-    /* Phase 5: Count pop animation */
-    @keyframes pop {
-      0% { transform: scale(1); }
-      50% { transform: scale(1.3); }
-      100% { transform: scale(1); }
-    }
-    @keyframes blink {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0.3; }
-    }
-    .count.pop {
-      animation: pop 0.4s ease;
-    }
-    .count.alert {
-      animation: blink 0.8s ease-in-out infinite;
+    @keyframes zzzFloat {
+      0% {
+        opacity: 0;
+        transform: translateY(18px) scale(0.9);
+      }
+      25% {
+        opacity: 0.78;
+      }
+      100% {
+        opacity: 0;
+        transform: translateY(-26px) scale(1.18);
+      }
     }
 
-    /* Phase 5: Responsive sprites */
-    @media (max-width: 599px) {
-      .sprite {
-        width: 64px;
-        height: 64px;
+    @keyframes countPop {
+      0% {
+        transform: scale(1);
       }
-      .agent {
-        width: 80px;
+      45% {
+        transform: scale(1.3);
+      }
+      100% {
+        transform: scale(1);
+      }
+    }
+
+    @keyframes countBlink {
+      0%,
+      50% {
+        opacity: 1;
+        text-shadow: 0 0 14px rgba(255, 50, 50, 0.65);
+      }
+      51%,
+      100% {
+        opacity: 0.35;
+        text-shadow: 0 0 4px rgba(255, 50, 50, 0.25);
       }
     }
   </style>
 </head>
 <body style="background: transparent">
   <div class="widget" id="widget">
+    <div class="sleep-overlay" aria-hidden="true">
+      <div class="zzz">ZZZ</div>
+    </div>
+
     <div class="fallback">
       <button id="loadJsonBtn" type="button">Load JSON (fallback)</button>
       <input id="jsonFileInput" type="file" accept=".json,application/json" hidden />
       <span id="sourceStatus" class="source-status">source: /agents</span>
     </div>
 
-    <div class="count" id="count">x0</div>
+    <div class="debug-panel" id="debugPanel" aria-live="polite"></div>
+
+    <div class="count" id="count"><span class="count-value" id="countValue">x0</span></div>
     <div class="lobster-row" id="lobsterRow"></div>
     <div class="ticker" id="ticker">
-      <div class="ticker-track" id="tickerText">▶ [system] waiting...</div>
+      <div class="ticker-track" id="tickerText">🦞 [system] waiting...</div>
     </div>
   </div>
 
@@ -301,29 +462,54 @@
     const TODO_POLL_MS = 60_000;
     const SLEEP_AFTER_MS = 10 * 60_000;
 
+    const CHAR_ICONS = {
+      opus: "🦞",
+      sonnet: "🔵",
+      haiku: "🟢",
+      gemini: "🟡",
+      kusomegane: "🟣",
+      codex: "😎",
+      grok: "⚡",
+      sleep: "💤",
+    };
+
     const state = {
       agents: [],
       sleepMode: false,
+      manualSleep: false,
       frameIndex: 0,
       lastTickerText: "",
+      tickerFadeTimer: null,
       todoText: "",
       sourceStatus: "source: /agents",
       lastFetchError: "",
       lastActiveAt: Date.now(),
-      prevCount: 0,
-      prevAgentIds: new Set(),
+      lastRenderedCount: null,
+      debugVisible: false,
+      widgetHidden: false,
+      agentNodes: new Map(),
+      pollStatus: {
+        agents: { state: "idle", lastAt: null, error: "" },
+        todo: { state: "idle", lastAt: null, error: "" },
+      },
     };
 
     const widget = document.getElementById("widget");
     const lobsterRow = document.getElementById("lobsterRow");
     const countEl = document.getElementById("count");
+    const countValueEl = document.getElementById("countValue");
     const tickerEl = document.getElementById("tickerText");
     const loadJsonBtn = document.getElementById("loadJsonBtn");
     const jsonFileInput = document.getElementById("jsonFileInput");
     const sourceStatusEl = document.getElementById("sourceStatus");
+    const debugPanelEl = document.getElementById("debugPanel");
 
     function framePath(char, frameNumber) {
       return `${SPRITE_BASE}/${char}-frame${frameNumber}.png`;
+    }
+
+    function iconForChar(char) {
+      return CHAR_ICONS[char] || "🦞";
     }
 
     function normalizeStarted(started) {
@@ -380,22 +566,8 @@
       return `hsl(${hue} 95% 55%)`;
     }
 
-    const CHAR_EMOJI = {
-      'opus': '🦞',
-      'sonnet': '🔵',
-      'haiku': '🟢',
-      'gpt': '🟡',
-      'gemini': '🟣',
-      'codex': '😎',
-      'flash': '⚡',
-    };
-
-    function getCharEmoji(char) {
-      return CHAR_EMOJI[char.toLowerCase()] || '🦞';
-    }
-
     function currentTickerText() {
-      if (state.sleepMode) return "💤 sleep mode";
+      if (state.sleepMode) return "💤 [sleep] おやすみ中...";
 
       const active = state.agents
         .filter((agent) => agent.task)
@@ -403,19 +575,18 @@
 
       if (active.length > 0) {
         const focus = active[0];
-        const emoji = getCharEmoji(focus.char);
-        return `${emoji} [${focus.char}] ${focus.task}`;
+        return `${iconForChar(focus.char)} [${focus.char}] ${focus.task}`;
       }
 
       if (state.todoText) {
-        return `📌 ${state.todoText}`;
+        return `🦞 [todo] ${state.todoText}`;
       }
 
       if (state.lastFetchError) {
-        return "⚠ /agents を取得できません（JSONをドラッグ&ドロップ可能）";
+        return "🦞 ⚠ /agents を取得できません（JSONをドラッグ&ドロップ可能）";
       }
 
-      return "▶ [system] waiting...";
+      return "🦞 [system] waiting...";
     }
 
     function updateSourceStatus(text) {
@@ -424,109 +595,211 @@
     }
 
     function refreshSleepMode() {
+      if (state.manualSleep) {
+        state.sleepMode = true;
+        return;
+      }
+
       if (state.agents.length > 0) {
         state.lastActiveAt = Date.now();
         state.sleepMode = false;
         return;
       }
+
       state.sleepMode = Date.now() - state.lastActiveAt >= SLEEP_AFTER_MS;
+    }
+
+    function agentKey(agent) {
+      if (agent.char === "sleep") return "sleep";
+      return `${agent.char}`;
+    }
+
+    function createAgentNode(agent) {
+      const agentEl = document.createElement("div");
+      agentEl.className = "agent entering";
+
+      const nameEl = document.createElement("div");
+      nameEl.className = "agent-name";
+
+      const imgEl = document.createElement("img");
+      imgEl.className = "sprite";
+      imgEl.loading = "lazy";
+      imgEl.addEventListener("error", () => {
+        if (imgEl.dataset.fallback === "1") return;
+        imgEl.dataset.fallback = "1";
+        imgEl.src = framePath("opus", ((state.frameIndex % FRAME_COUNT) + 1));
+      });
+
+      const timerEl = document.createElement("div");
+      timerEl.className = "timer";
+
+      agentEl.appendChild(nameEl);
+      agentEl.appendChild(imgEl);
+      agentEl.appendChild(timerEl);
+
+      agentEl.addEventListener("animationend", () => {
+        agentEl.classList.remove("entering");
+      }, { once: true });
+
+      return {
+        el: agentEl,
+        nameEl,
+        imgEl,
+        timerEl,
+        char: agent.char,
+        removing: false,
+      };
+    }
+
+    function updateAgentNode(node, agent, idx) {
+      const frameNumber = ((state.frameIndex + idx) % FRAME_COUNT) + 1;
+
+      if (node.char !== agent.char) {
+        delete node.imgEl.dataset.fallback;
+      }
+
+      node.char = agent.char;
+      node.nameEl.textContent = agent.char;
+      node.imgEl.alt = agent.char;
+
+      const spriteChar = node.imgEl.dataset.fallback === "1" ? "opus" : agent.char;
+      const nextSrc = framePath(spriteChar, frameNumber);
+      if (node.imgEl.src !== nextSrc) {
+        node.imgEl.src = nextSrc;
+      }
+
+      node.imgEl.title = agent.task ? `${agent.char}: ${agent.task}` : `${agent.char}: (taskなし)`;
+
+      node.timerEl.style.animationDelay = `${idx * 0.2}s`;
+      node.timerEl.textContent = formatElapsed(agent.started);
+    }
+
+    function removeAgentNode(key, node) {
+      if (!node || node.removing) return;
+      node.removing = true;
+      node.el.classList.add("leaving");
+      window.setTimeout(() => {
+        if (node.el.isConnected) {
+          node.el.remove();
+        }
+        state.agentNodes.delete(key);
+      }, 430);
+    }
+
+    function syncAgentNodes(agents) {
+      const desiredKeys = [];
+
+      agents.forEach((agent, idx) => {
+        const key = agentKey(agent);
+        desiredKeys.push(key);
+
+        let node = state.agentNodes.get(key);
+        if (!node) {
+          node = createAgentNode(agent);
+          state.agentNodes.set(key, node);
+        }
+
+        if (node.removing) {
+          node.removing = false;
+          node.el.classList.remove("leaving");
+        }
+
+        updateAgentNode(node, agent, idx);
+        lobsterRow.appendChild(node.el);
+      });
+
+      for (const [key, node] of state.agentNodes.entries()) {
+        if (!desiredKeys.includes(key)) {
+          removeAgentNode(key, node);
+        }
+      }
+    }
+
+    function triggerCountPop() {
+      countValueEl.classList.remove("pop");
+      void countValueEl.offsetWidth;
+      countValueEl.classList.add("pop");
+    }
+
+    function updateCount(count) {
+      countValueEl.textContent = `x${count}`;
+      countEl.classList.toggle("danger", count >= 7);
+
+      if (count < 7) {
+        countEl.style.color = countColor(count);
+      } else {
+        countEl.style.color = "#ff4d4d";
+      }
+
+      if (state.lastRenderedCount !== count) {
+        triggerCountPop();
+        state.lastRenderedCount = count;
+      }
+    }
+
+    function setTickerText(nextText) {
+      if (nextText === state.lastTickerText) return;
+
+      if (state.tickerFadeTimer) {
+        clearTimeout(state.tickerFadeTimer);
+      }
+
+      tickerEl.classList.add("fade-out");
+      state.tickerFadeTimer = setTimeout(() => {
+        tickerEl.textContent = nextText;
+        tickerEl.style.animation = "none";
+        void tickerEl.offsetWidth;
+        tickerEl.style.animation = "marquee 12s linear infinite";
+        tickerEl.classList.remove("fade-out");
+        state.lastTickerText = nextText;
+      }, 160);
+    }
+
+    function formatPollTime(ts) {
+      if (!ts) return "--:--:--";
+      return new Date(ts).toLocaleTimeString("ja-JP", { hour12: false });
+    }
+
+    function updateDebugPanel() {
+      const agentsPoll = state.pollStatus.agents;
+      const todoPoll = state.pollStatus.todo;
+
+      debugPanelEl.textContent = [
+        `agents: ${state.agents.length}/${MAX_AGENTS}`,
+        `sleep: ${state.sleepMode ? "ON" : "OFF"} (manual: ${state.manualSleep ? "ON" : "OFF"})`,
+        `widget: ${state.widgetHidden ? "hidden" : "visible"}`,
+        `/agents: ${agentsPoll.state} @ ${formatPollTime(agentsPoll.lastAt)}`,
+        `/todo: ${todoPoll.state} @ ${formatPollTime(todoPoll.lastAt)}`,
+        `source: ${state.sourceStatus}`,
+        `last error: ${state.lastFetchError || "none"}`,
+      ].join("\n");
+
+      debugPanelEl.classList.toggle("show", state.debugVisible);
+    }
+
+    function markPoll(kind, status, error = "") {
+      state.pollStatus[kind] = {
+        state: status,
+        lastAt: Date.now(),
+        error,
+      };
+      updateDebugPanel();
     }
 
     function render() {
       refreshSleepMode();
       const agents = visibleAgents();
+
       widget.classList.toggle("sleep-mode", state.sleepMode);
+      widget.classList.toggle("widget-hidden", state.widgetHidden);
 
-      // Phase 5: Sleep zzZ overlay
-      let zzzEl = widget.querySelector(".sleep-zzz");
-      if (state.sleepMode && !zzzEl) {
-        zzzEl = document.createElement("div");
-        zzzEl.className = "sleep-zzz";
-        zzzEl.textContent = "zzZ";
-        widget.appendChild(zzzEl);
-      } else if (!state.sleepMode && zzzEl) {
-        zzzEl.remove();
-      }
+      syncAgentNodes(agents);
 
-      // Track current agent IDs for animation
-      const currentAgentIds = new Set(agents.map((a, i) => `${a.char}-${i}`));
-      const isNewAgent = (id) => !state.prevAgentIds.has(id);
-
-      lobsterRow.innerHTML = "";
-
-      agents.forEach((agent, idx) => {
-        const frameNumber = ((state.frameIndex + idx) % FRAME_COUNT) + 1;
-        const agentId = `${agent.char}-${idx}`;
-
-        const agentEl = document.createElement("div");
-        // Phase 5: Add entering class for new agents
-        agentEl.className = isNewAgent(agentId) ? "agent entering" : "agent active";
-
-        const nameEl = document.createElement("div");
-        nameEl.className = "agent-name";
-        nameEl.textContent = agent.char;
-
-        const imgEl = document.createElement("img");
-        imgEl.className = "sprite";
-        imgEl.alt = agent.char;
-        imgEl.src = framePath(agent.char, frameNumber);
-        imgEl.title = agent.task ? `${agent.char}: ${agent.task}` : `${agent.char}: (taskなし)`;
-        imgEl.addEventListener("error", () => {
-          if (imgEl.dataset.fallback === "1") return;
-          imgEl.dataset.fallback = "1";
-          imgEl.src = framePath("opus", frameNumber);
-        });
-
-        const timerEl = document.createElement("div");
-        timerEl.className = "timer";
-        timerEl.style.animationDelay = `${idx * 0.2}s`;
-        timerEl.textContent = formatElapsed(agent.started);
-
-        agentEl.appendChild(nameEl);
-        agentEl.appendChild(imgEl);
-        agentEl.appendChild(timerEl);
-        lobsterRow.appendChild(agentEl);
-
-        // Phase 5: Trigger active animation after DOM insertion
-        if (isNewAgent(agentId)) {
-          requestAnimationFrame(() => {
-            agentEl.classList.remove("entering");
-            agentEl.classList.add("active");
-          });
-        }
-      });
-
-      state.prevAgentIds = currentAgentIds;
-
-      // Phase 5: Count pop animation
       const count = state.sleepMode ? 0 : agents.length;
-      const countChanged = count !== state.prevCount;
-      
-      countEl.textContent = `x${count}`;
-      countEl.style.color = countColor(count);
-      
-      // Remove old animations
-      countEl.classList.remove("pop", "alert");
-      
-      if (countChanged && count > 0) {
-        countEl.classList.add("pop");
-        setTimeout(() => countEl.classList.remove("pop"), 400);
-      }
-      
-      if (count >= 7) {
-        countEl.classList.add("alert");
-      }
-      
-      state.prevCount = count;
+      updateCount(count);
 
-      const tickerText = currentTickerText();
-      if (tickerText !== state.lastTickerText) {
-        tickerEl.textContent = tickerText;
-        tickerEl.style.animation = "none";
-        void tickerEl.offsetWidth;
-        tickerEl.style.animation = "marquee 12s linear infinite";
-        state.lastTickerText = tickerText;
-      }
+      setTickerText(currentTickerText());
+      updateDebugPanel();
     }
 
     function tickFrame() {
@@ -535,6 +808,7 @@
     }
 
     async function pollAgents() {
+      markPoll("agents", "polling");
       try {
         const response = await fetch("/agents", { cache: "no-store" });
         if (!response.ok) {
@@ -547,15 +821,18 @@
           state.lastActiveAt = Date.now();
         }
         updateSourceStatus("source: live /agents");
+        markPoll("agents", "ok");
         render();
       } catch (error) {
         state.lastFetchError = error?.message || "fetch failed";
         updateSourceStatus(`source: fallback (${state.lastFetchError})`);
+        markPoll("agents", "error", state.lastFetchError);
         render();
       }
     }
 
     async function pollTodo() {
+      markPoll("todo", "polling");
       try {
         const response = await fetch("/todo", { cache: "no-store" });
         if (!response.ok) {
@@ -567,9 +844,10 @@
         } else if (typeof payload === "string") {
           state.todoText = payload.trim();
         }
+        markPoll("todo", "ok");
         render();
-      } catch {
-        // todo は補助情報なので失敗時は静かに無視
+      } catch (error) {
+        markPoll("todo", "error", error?.message || "fetch failed");
       }
     }
 
@@ -589,6 +867,24 @@
       } catch (error) {
         updateSourceStatus(`source: local file error (${error?.message || "invalid json"})`);
       }
+    }
+
+    function toggleManualSleep() {
+      state.manualSleep = !state.manualSleep;
+      if (!state.manualSleep && state.agents.length > 0) {
+        state.lastActiveAt = Date.now();
+      }
+      render();
+    }
+
+    function toggleDebug() {
+      state.debugVisible = !state.debugVisible;
+      updateDebugPanel();
+    }
+
+    function toggleWidgetHidden() {
+      state.widgetHidden = !state.widgetHidden;
+      render();
     }
 
     loadJsonBtn.addEventListener("click", () => jsonFileInput.click());
@@ -614,14 +910,25 @@
       loadAgentsFromFile(file);
     });
 
-    // Phase 5: 'S' key toggles sleep mode
     document.addEventListener("keydown", (event) => {
-      if (event.key.toLowerCase() === "s" && !event.ctrlKey && !event.metaKey && !event.altKey) {
-        state.sleepMode = !state.sleepMode;
-        if (!state.sleepMode) {
-          state.lastActiveAt = Date.now();
-        }
-        render();
+      const tagName = event.target?.tagName;
+      if (tagName === "INPUT" || tagName === "TEXTAREA") return;
+
+      if (event.key === "s" || event.key === "S") {
+        event.preventDefault();
+        toggleManualSleep();
+        return;
+      }
+
+      if (event.key === "d" || event.key === "D") {
+        event.preventDefault();
+        toggleDebug();
+        return;
+      }
+
+      if (event.key === "Escape") {
+        event.preventDefault();
+        toggleWidgetHidden();
       }
     });
 
